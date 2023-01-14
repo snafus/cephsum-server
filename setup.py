@@ -1,4 +1,5 @@
-from setuptools import setup
+#from setuptools import setup
+from setuptools import setup, find_packages
 
 setup(name='cephsumserver',
       version='0.0.1',
@@ -7,9 +8,11 @@ setup(name='cephsumserver',
       author='james.walder',
       author_email='james.walder@NOSPAM.ac.uk',
       license='MIT',
-      packages=['cephsumserver'],
+      packages=find_packages(),
+      #packages=['cephsumserver','cephsumserver.scripts'],
+      #py_modules=['cephsumserver'],
       entry_points = {
-        'console_scripts': ['cephserve=scripts.cephserver:main'],
+        'console_scripts': ['cephserve=cephsumserver.scripts.cephserver:main'],
       },
       zip_safe=False)
 
