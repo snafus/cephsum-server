@@ -35,4 +35,7 @@ keyring = /etc/ceph/ceph.client.user.keyring
 cephuser = client.user
 ```
 
+# secrets file
+This file (e.g. cephsum-secrets.cfg) should contain only a single string for the shared secret key, and be well protected (e.g. permissions)
+
 
