@@ -2,9 +2,9 @@
 from setuptools import setup, find_packages
 
 setup(name='cephsumserver',
-      version='0.0.1',
+      version='0.0.2',
       description='Server based cephsum code',
-      url='http://github.com/storborg/funniest',
+      url='https://github.com/snafus/cephsum-server',
       author='james.walder',
       author_email='james.walder@NOSPAM.ac.uk',
       license='MIT',

@@ -95,7 +95,7 @@ def main():
 
     host = config['APP'].get('host', args.host)
     port = config['APP'].getint('port', args.port)
-    secretsfile = config['APP'].get('secretsfile', args.secretsfile)
+    secretsfile = args.secretsfile if args.secretsfile else config['APP'].get('secretsfile')
 
 
     cephconf = config['CEPH'].get('cephconf', args.cephconf)

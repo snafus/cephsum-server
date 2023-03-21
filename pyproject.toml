@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "cephsum_server"
-version = "0.0.1"
+version = "0.0.2"
 authors = [
   { name="James Walder", email="james.walder@NOSPAM.stfc.ac.uk" },
 ]

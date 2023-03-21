@@ -22,8 +22,8 @@ class Monitor:
         self._stopmonitor = threading.Event()
         self._stoplog = threading.Event()
         self._logger = logging.getLogger()
-        self._monitorfreq = 5
-        self._logfreq = 10
+        self._monitorinterval = 300
+        self._loginterval = 120
 
         self._thread = threading.Thread(target=self._monitor)
         self._thread.setDaemon(True)
@@ -62,7 +62,7 @@ class Monitor:
 
             p = psutil.Process(self._pid)
             with p.oneshot():
-                print(\
+                values = [\
                 p.name(),  # execute internal routine once collecting multiple info
                 p.cpu_times(),  # return cached value
                 p.cpu_percent(),  # return cached value
@@ -71,17 +71,26 @@ class Monitor:
                 p.status(),
                 #
                 p.io_counters(),
-                )  # return cached value
+                ]
+                txt = ', '.join(map(str,values))
+                logging.info(txt)
 
+            sleep(self._monitorinterval)
 
+    def set_logging_interval(self, dt_s: int):
+        """Set the interval (in seconds) between logging output"""
+        self._loginterval = dt_s
+        
 
-            sleep(self._monitorfreq)
+    def set_monitor_interval(self, dt_s: int):
+        """Set the interval (in seconds) between monitoring updates"""
+        self._monitorinterval = dt_s
 
     def _log(self):
         while not self._stoplog.is_set():
             uptime = (datetime.datetime.utcnow() - self._starttime).total_seconds()
             self._logger.info(f'Monitor: uptime {uptime:.0f}. threads {self._n_threads} max {self._n_maxthreads}')
-            sleep(self._logfreq)
+            sleep(self._loginterval)
 
     def dump(self):
         pass

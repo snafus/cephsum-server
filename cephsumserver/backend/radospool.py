@@ -111,22 +111,26 @@ class RadosPool:
             self._resources = []
 
     def get(self):
+        """return an instance of rados client from the pool. 
+        """
         tmp_idx = self._index
         # not 'atomically' safe ... but safe enough
         self._index = (self._index + 1) % len(self._resources)
-        # self._index = (self._index + 1) % self._max_size
-        # if self._index >= len(self._resources):
-        #     self.add_instance()
-        #     assert len(self._resources) <= self._max_size
         rs = self._resources[tmp_idx]
         return rs
 
-    def parse(self, path: str): 
-        """Parse an input path into it's pool an object name, according to the mapping file"""
+    def parse(self, path: str, remove_cgi: bool =True): 
+        """Parse an input path into it's pool an object name, according to the mapping file
+        
+        Root protocol formated checksum requests might have opaque info, encoded in the path.
+        If remove_cgi is true we will remove any opaque info, delimited by the &.
+        """
         if self._lfn2pfn is not None:
             pool, oid = self._lfn2pfn.parse(path)
         else:
             pool, oid = naive_ral_split_path(path)
+        if remove_cgi:
+            oid = oid.split('?')[0]
         logging.debug(f'Mapped {path} to {pool}, {oid}')
         return pool, oid
 

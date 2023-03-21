@@ -19,7 +19,7 @@ class Stat(ThreadedRequestHandler):
         self._thread.start()
 
     def _stat(self):
-        cluster = radospool.RadosPool().get()
+        cluster = radospool.RadosPool.pool().get()
         with cluster.open_ioctx(self._pool)  as ioctx:
             size, timestamp = cephtools.stat(ioctx, self._path)
 
