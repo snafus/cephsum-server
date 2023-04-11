@@ -15,26 +15,24 @@ from cephsumserver.server import reqserver
 from cephsumserver.backend import radospool
 from cephsumserver.backend.lfn2pfn import Lfn2PfnMapper
 
-def logger_setup(loglevel, logformat):
+def logger_setup(loglevel, logformat, datetimeformat):
     # basic logger to output
     logger = logging.getLogger()
     # set a default of debug; to allow other logging levels later on
     logger.setLevel(logging.DEBUG)
 
     log_handler = logging.StreamHandler()
-    formatter = logging.Formatter(logformat,
-        '%b %d %H:%M:%S')
+    formatter = logging.Formatter(logformat,datetimeformat)
     log_handler.setLevel(loglevel)
     log_handler.setFormatter(formatter)
     logger.addHandler(log_handler)
     # return logger
 
-def logfile_setup(logfile, loglevel, logformat):
+def logfile_setup(logfile, loglevel, logformat, datetimeformat):
     """Logging to an output file, with logrotate awareness"""
 
     log_handler = logging.handlers.WatchedFileHandler(logfile)
-    formatter = logging.Formatter(logformat,
-        '%b %d %H:%M:%S')
+    formatter = logging.Formatter(logformat,datetimeformat)
     formatter.converter = time.gmtime  # if you want UTC time
     log_handler.setLevel(loglevel)
     log_handler.setFormatter(formatter)
@@ -106,6 +104,7 @@ def main():
     else:
         loglevel  = config['LOGGING'].get("loglevel", 'info').upper()
         logfilelevel = config['LOGGING'].get("logfilelevel",loglevel).upper()
+    logdatetime = config['LOGGING'].get("datetime", '%Y%m%d-%H:%M:%S%z')
     logfile   = config['LOGGING'].get('logfile', args.logfile)
     logformat = config['LOGGING'].get('logformat','CEPHSUMSERVE-%(asctime)s-%(process)d-%(levelname)s-%(message)s')
     logfileformat = config['LOGGING'].get('logfileformat',logformat)
@@ -120,9 +119,9 @@ def main():
     maxpoolsize = args.maxpoolsize if args.maxpoolsize else config['CEPHSUM'].getint('maxpoolsize', 5)
  
     # configure logging
-    logger_setup(loglevel=loglevel, logformat=logformat)
+    logger_setup(loglevel=loglevel, logformat=logformat, datetimeformat=logdatetime)
     if logfile is not None:
-        logfile_setup(logfile, loglevel=logfilelevel, logformat=logfileformat)
+        logfile_setup(logfile, loglevel=logfilelevel, logformat=logfileformat,datetimeformat=logdatetime)
 
     # server start message
     logging.info("="*80)
