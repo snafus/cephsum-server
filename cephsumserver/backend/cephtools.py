@@ -5,7 +5,7 @@ import logging,argparse,math
 from ..backend import XrdCks,adler32
 import rados
 
-chunk0=f'.{0:016x}' # Chunks are hex valued
+chunk0=f'.{0:016x}' # Chunks are 16 digit hex valued
 nZeros=16
 
 
@@ -137,12 +137,10 @@ def write_xattr(ioctx,path,xattr_name, xattr_value, force=False):
     data = retrieve_xattr( ioctx,path,xattr_name)
 
     if data is not None and not force:
-        #print(data)
         logging.info(f'{path}: Xattr existing {xattr_name} and force not set')
         raise ValueError(f"Xattr {xattr_name} already existing for {path}")
 
     if data is not None and force:
-        #print(data)
         try:
             ioctx.rm_xattr(oid, xattr_name)
         except Exception as e:

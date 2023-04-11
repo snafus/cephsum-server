@@ -43,6 +43,7 @@ class RadosPool:
         # would be better to do this on demand ... 
         for _ in range(self._max_size):
             self.add_instance()
+        logging.info(f"Created pool with {len(self._resources)} rados clients")
 
     @classmethod
     def pool(cls):
@@ -89,7 +90,7 @@ class RadosPool:
                                       conf = dict (keyring = self._keyring), 
                                       name=self._name)
                 cluster.connect()
-                logging.info("Connected a rados client to cluster")
+                logging.debug("Connected a rados client to cluster")
             except Exception as e:
                 # Log and re-raise the exception for now
                 logging.error(f'Could not connect to cluster',exc_info=True)
@@ -140,13 +141,3 @@ class RadosPool:
 
     def __str__(self):
         return "RadosPool:{}/{} used".format(len(self._resources), self._max_size)
-
-if __name__ == "__main__":
-    p = RadosPool.create(max_size=5)
-    print(p)
-    for _ in range(5):
-        print(p.get())
-
-    print(p.get().list_pools())
-
-    p.shutdown_all()

@@ -15,12 +15,11 @@ def deliver_challenge(connection, authkey):
         raise ValueError(
             "Authkey must be bytes, not {0!s}".format(type(authkey)))
     message = os.urandom(MESSAGE_LENGTH)
-    # message = b'12345678901234567890'
     assert len(message) == MESSAGE_LENGTH
     connection.sendall(CHALLENGE + message)
     digest = hmac.new(authkey, message, 'md5').digest()
     response = connection.recv(256)        # reject large message
-    print(digest, response)
+    # digest, response
     if response == digest:
         connection.sendall(WELCOME)
     else:

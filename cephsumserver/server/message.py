@@ -22,20 +22,6 @@ def send(sock, msg: dict):
         # send the length and the message
         sock.sendall(msg_length+msg)
 
-
-# def inner_recv(sock, read_size, retries=5):
-#     _retries=retries
-#     while retries:
-#         try:
-#             data = sock.recv(read_size)
-#         except socket.timeout:
-#             _retries -=1
-#             if _retries == 0:
-#                 print("inner timeout")
-#                 raise socket.timeout
-#             continue
-#         return data
-
 def recv(sock) -> dict:
     """Receive the data via the socket. 
     
@@ -48,7 +34,7 @@ def recv(sock) -> dict:
     data = sock.recv(4)
     msg_length = int.from_bytes(data,'big')
     if msg_length==0:
-        # print("message over")
+        # zero length message, so we are done
         return {}
 
     data = b''
@@ -62,5 +48,4 @@ def recv(sock) -> dict:
 
     json1 = perf_counter()
     msg = json.loads(data.decode('utf8'))
-    print("JSON: ", perf_counter() - json1)
     return msg

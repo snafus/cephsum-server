@@ -14,6 +14,7 @@ from time import sleep, perf_counter
 from . import auth
 from . import message
 from ..workers import handler
+from ..backend import radospool
 
 
 class ThreadedTCPRequestHandler(socketserver.StreamRequestHandler):
@@ -93,7 +94,7 @@ class ThreadedTCPRequestHandler(socketserver.StreamRequestHandler):
                 message.send(self.request,{'msg':'response', 'status_message':'OK', 
                         'status':0, 'details':resp.response, 'ver':'v1'})
             else:
-                message.send(self.request,{'msg':'response', 'status_message':'OK', 
+                message.send(self.request,{'msg':'response', 'status_message':'ERROR', 
                         'status':resp.status, 'details':resp.error, 'ver':'v1'})
             # send the final response
             # signal end of messages
@@ -125,7 +126,6 @@ class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
 
         """
         logging.info("server_close")
-        from ..backend import radospool
         radospool.RadosPool.pool().shutdown_all()
         # try to close any established connection ?? 
         try:
@@ -137,6 +137,7 @@ class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
 
 def start_server(address, authkeyfile):
     authkey=auth.get_key(authkeyfile)
+    logging.info(f"Starting TCP server, listening on {address[0]}:{address[1]}")
 
     with ThreadedTCPServer(address, ThreadedTCPRequestHandler,
                         authkey=authkey) as tcpserver:
