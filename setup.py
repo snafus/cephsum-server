@@ -2,7 +2,7 @@
 from setuptools import setup, find_packages
 
 setup(name='cephsumserver',
-      version='0.0.2',
+      version='0.9.0',
       description='Server based cephsum code',
       url='https://github.com/snafus/cephsum-server',
       author='james.walder',
