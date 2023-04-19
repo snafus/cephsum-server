@@ -9,7 +9,7 @@ import time
 
 import cephsumserver
 
-from cephsumserver.common import monitoring
+from cephsumserver.common import monitoring, metricsserver, metricshandler
 
 from cephsumserver.server import reqserver
 from cephsumserver.backend import radospool
@@ -39,11 +39,13 @@ def logfile_setup(logfile, loglevel, logformat, datetimeformat):
     logger = logging.getLogger()
     logger.addHandler(log_handler)
 
-def register_actions(actions: str):
+def register_actions(actions: str, metrics: str):
     """Define which actions this server is allowed to run
-    input: string of comma separated list of actions to register
+    actions: string of comma separated list of actions to register
+    metrics: string of comma separated list of metrics to register
     """
     ac = [x.strip() for x in actions.split(',')]
+    me = [x.strip() for x in metrics.split(',') if x.strip() in ac]
 
     from cephsumserver.workers import ping, wait, stat, cksum, handler
     from cephsumserver.common import requestmanager
@@ -54,6 +56,11 @@ def register_actions(actions: str):
                         'cksum':cksum.Cksum,
                         }
     handler.register_workers({k:v for k,v in available_workers.items() if k in ac})
+    metrics_handler = metricshandler.MetricsHandler()
+    for k,v in handler._workers.items():
+        v.set_metrics_handler(metrics_handler)
+
+
 
 def create_parseargs():
     parser = argparse.ArgumentParser(description='Checksum based operations for Ceph rados system; based around XrootD requirments')
@@ -109,6 +116,10 @@ def main():
     logformat = config['LOGGING'].get('logformat','CEPHSUMSERVE-%(asctime)s-%(process)d-%(levelname)s-%(message)s')
     logfileformat = config['LOGGING'].get('logfileformat',logformat)
 
+    metricslisten   = config['LOGGING'].get('metricslisten', "127.0.0.1")
+    metricsport     = config['LOGGING'].get('metricsport', 9919)
+
+
     lfn2pfn_file = config['CEPHSUM'].get('lfn2pfn', args.lfn2pfn_xmlfile)
     readsize  = config['CEPHSUM'].getint('readsize', args.readsize) * 1024**2
 
@@ -130,6 +141,10 @@ def main():
 
     # monitoring: begin the monitoring
     m = monitoring.Monitor.create()
+
+    # metrics
+    mhandler = metricshandler.MetricsHandler.create() # create the singleton
+    metrics  = metricsserver.MetricsServer(handler=mhandler, listen_host=metricslisten, listen_port=metricsport)
 
     # register actions; default is just the checksum
     register_actions(config['CEPHSUM'].get('actions','cksum'))
@@ -154,6 +169,7 @@ def main():
         pass
     finally:
         pass
+    metrics.shutdown()
     logging.info("Server shutdown, terminating")
 
 

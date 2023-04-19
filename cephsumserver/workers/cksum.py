@@ -4,9 +4,31 @@ import threading
 from time import sleep
 from ..backend import radospool, cephtools, actions, XrdCks
 from ..common.requestmanager import ThreadedRequestHandler, Response
+
 # from ..backend.XrdCks import XrdCks
 
 import rados
+
+class ChecksumMetrics():
+    def __init__(self):
+        self._metrics = {}
+        self._create_metrics()
+
+    def _create_metrics(self):
+        self._metrics['checksum.count'] = metricshandler.Counter('checksum.count')
+
+    def metric(self, name: str):
+        if not name in self._metrics:
+            raise RuntimeError(f"Metric {name} not registered")
+        return self._metrics[name]
+
+    def poll(self):
+        """return a list of metrics"""
+        return [v for _,v in self._metrics.items()]
+
+    def __str__(self):
+        
+
 
 class Cksum(ThreadedRequestHandler):
     def __init__(self, msg: dict):
@@ -84,6 +106,8 @@ class Cksum(ThreadedRequestHandler):
         except Exception as e:
             self.set_response(Response(1, {}, {'error':str(e)}))
             raise e
+
+        self._metrics_handler.metric('checksum.count', metricshandler.Counter).add_one()
 
         if xrdcks is not None:
             digest = xrdcks.get_cksum_as_hex()

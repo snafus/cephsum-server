@@ -45,7 +45,7 @@ class ThreadedRequestHandler(RequestHandler):
     def __init__(self):
         super().__init__()
 
-    def start(self):
+    def start(self, metrics_hander = None):
         # self._thread = threading.Thread(target=worker, args=(self.set_response, self._args, self._kwargs))
         # self._thread.setDaemon(True)
         # self._thread.start()
