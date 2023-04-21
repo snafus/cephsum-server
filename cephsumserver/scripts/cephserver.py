@@ -1,11 +1,11 @@
 import argparse
 import configparser
+import datetime
 import logging
 import logging.handlers
 import os
 import socket
 import time
-
 
 import cephsumserver
 
@@ -15,6 +15,9 @@ from cephsumserver.server import reqserver
 from cephsumserver.backend import radospool
 from cephsumserver.backend.lfn2pfn import Lfn2PfnMapper
 
+def timetz(*args):
+    return datetime.datetime.now(datetime.timezone.utc).astimezone().timetuple()
+
 def logger_setup(loglevel, logformat, datetimeformat):
     # basic logger to output
     logger = logging.getLogger()
@@ -23,6 +26,8 @@ def logger_setup(loglevel, logformat, datetimeformat):
 
     log_handler = logging.StreamHandler()
     formatter = logging.Formatter(logformat,datetimeformat)
+    # formatter.converter = timetz
+    formatter.converter = time.localtime
     log_handler.setLevel(loglevel)
     log_handler.setFormatter(formatter)
     logger.addHandler(log_handler)
@@ -33,7 +38,9 @@ def logfile_setup(logfile, loglevel, logformat, datetimeformat):
 
     log_handler = logging.handlers.WatchedFileHandler(logfile)
     formatter = logging.Formatter(logformat,datetimeformat)
-    formatter.converter = time.gmtime  # if you want UTC time
+    #formatter.converter = time.gmtime  # if you want UTC time
+    # formatter.converter = timetz
+    formatter.converter = time.localtime
     log_handler.setLevel(loglevel)
     log_handler.setFormatter(formatter)
     logger = logging.getLogger()
@@ -76,11 +83,11 @@ def create_parseargs():
 
 
     parser.add_argument('-r','--readsize',help='Set the readsize in MiB for each chunk of data. Should be a power of 2, and near (but not larger than) the stripe size. Smaller values wll use less memory, larger sizes may have benefits in IO performance.',
-                        dest='readsize',default=64,type=int)
+                        dest='readsize',default=None,type=int)
 
     parser.add_argument('-x','--lfn2pfnxml',default=None, dest='lfn2pfn_xmlfile', 
                         help='The storage.xml file usually provided to xrootd for lfn2pfn mapping. If not provided a simple method is used to separate the pool and object names')
-    parser.add_argument('-m','--maxpoolsize',default=5, type=int, dest='maxpoolsize', 
+    parser.add_argument('-m','--maxpoolsize',default=None, type=int, dest='maxpoolsize', 
                         help='Max number of rados clients to create in the pool')
 
     return parser
@@ -109,23 +116,23 @@ def main():
     logformat = config['LOGGING'].get('logformat','CEPHSUMSERVE-%(asctime)s-%(process)d-%(levelname)s-%(message)s')
     logfileformat = config['LOGGING'].get('logfileformat',logformat)
 
-    lfn2pfn_file = config['CEPHSUM'].get('lfn2pfn', args.lfn2pfn_xmlfile)
-    readsize  = config['CEPHSUM'].getint('readsize', args.readsize) * 1024**2
-
-    cephconf = config['CEPH'].get('cephconf', args.cephconf)
-    keyring  = config['CEPH'].get('keyring', args.keyring)
-    cephuser = config['CEPH'].get('cephuser', args.cephuser)
-
-    maxpoolsize = args.maxpoolsize if args.maxpoolsize else config['CEPHSUM'].getint('maxpoolsize', 5)
- 
     # configure logging
     logger_setup(loglevel=loglevel, logformat=logformat, datetimeformat=logdatetime)
     if logfile is not None:
         logfile_setup(logfile, loglevel=logfilelevel, logformat=logfileformat,datetimeformat=logdatetime)
 
+    lfn2pfn_file = config['CEPHSUM'].get('lfn2pfn', args.lfn2pfn_xmlfile)
+    readsize  = max(1, config['CEPHSUM'].getint('readsize', args.readsize) * 1024**2)
+
+    cephconf = config['CEPH'].get('cephconf', args.cephconf)
+    keyring  = config['CEPH'].get('keyring', args.keyring)
+    cephuser = config['CEPH'].get('cephuser', args.cephuser)
+
     # server start message
     logging.info("="*80)
     logging.info("Starting cephsum server: {hostname}".format(hostname=socket.getfqdn()))
+    logging.info("\tVersion: {version}".format(version=cephsumserver.__version__))
+
 
 
     # monitoring: begin the monitoring
@@ -139,6 +146,13 @@ def main():
     lfnmapping = None
     if lfn2pfn_file:
         lfnmapping = Lfn2PfnMapper.from_file(lfn2pfn_file)
+
+    # pool size info; and limit to 5 max
+    maxpoolsize = max(1, args.maxpoolsize if args.maxpoolsize else config['CEPHSUM'].getint('maxpoolsize', 5))
+    if maxpoolsize > 5:
+        logging.warning("Max poolsize was {}; restricting to 5".format(maxpoolsize))
+        maxpoolsize = 5
+
     # create the singleton rados pool
     p = radospool.RadosPool.create(max_size=maxpoolsize, 
                                    lfn2pfn = lfnmapping,

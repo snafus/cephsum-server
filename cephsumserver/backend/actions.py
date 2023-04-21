@@ -30,6 +30,9 @@ def get_checksum(ioctx, path, readsize, xattr_name = "XrdCks.adler32"):
     if xrdcks is None:
         xrdcks = get_from_file(ioctx, path,readsize)
         source = 'file'
+    if xrdcks is None:
+        logging.warning(f'Path:{path}; No existing or could not be computed')
+        return None
     logging.info(f'Path:{path}; From:{source}; Checksum:{xrdcks.get_cksum_as_hex()}')
     return xrdcks 
 

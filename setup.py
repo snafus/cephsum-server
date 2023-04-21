@@ -1,8 +1,12 @@
 #from setuptools import setup
 from setuptools import setup, find_packages
 
+pkg_vars  = {}
+with open("cephsumserver/_version.py") as fp:
+    exec(fp.read(), pkg_vars)
+
 setup(name='cephsumserver',
-      version='0.9.0',
+      version=pkg_vars['__version__'],
       description='Server based cephsum code',
       url='https://github.com/snafus/cephsum-server',
       author='james.walder',

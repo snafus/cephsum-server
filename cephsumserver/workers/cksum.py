@@ -26,6 +26,7 @@ class Cksum(ThreadedRequestHandler):
             return
         # self._thread = threading.Thread(target=self._checksum_metadata)
         # self._thread = threading.Thread(target=self._checksum_fileonly)
+        # for now, we defer to _from_action, rather than anything cleverer
         self._thread = threading.Thread(target=self._from_action)
         self._thread.setDaemon(True)
         self._thread.start()
@@ -64,7 +65,7 @@ class Cksum(ThreadedRequestHandler):
         readsize = self._readsize
         xattr_name = self._xattr_name
         cluster = self._rados.get()
-
+        xrdcks = None
         logging.info(f"Running cksum action {self._action} for file {self._pool} {self._path}")
         try:
             with cluster.open_ioctx(self._pool) as ioctx:
@@ -81,6 +82,10 @@ class Cksum(ThreadedRequestHandler):
                 else:
                     logging.warning(f'Action {args.action} is not implemented')
                     raise NotImplementedError(f'Action {args.action} is not implemented')
+        except rados.ObjectNotFound as e:
+            logging.warning("Failed to open pool: {}".format(str(e)))
+            self.set_response(Response(1, {}, {'error':'Could not open pool: {}'.format(str(self._pool))}))
+            return
         except Exception as e:
             self.set_response(Response(1, {}, {'error':str(e)}))
             raise e

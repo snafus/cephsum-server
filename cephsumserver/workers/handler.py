@@ -5,6 +5,7 @@ _workers = {}
 def register_workers(workers):
     for k,v in workers.items():
         register_worker(k, v)
+    logging.info("Registered the workers: {}".format(', '.join([str(x) for x in _workers.keys()])))
 
 def register_worker(name, worker):
     logging.debug("Registering action: {} as {}".format(name, str(worker.__name__)))

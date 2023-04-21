@@ -221,7 +221,7 @@ def cks_from_file(ioctx, path, readsize):
     try:
         size, mtime = stat(ioctx,path)
     except rados.ObjectNotFound:
-        logging.error(f"File {path} not found")
+        logging.warning(f"File {path} not found")
         return None
     fmtime = datetime(mtime.tm_year, mtime.tm_mon, mtime.tm_mday ,mtime.tm_hour ,mtime.tm_min ,mtime.tm_sec ) 
     if mtime.tm_isdst:
