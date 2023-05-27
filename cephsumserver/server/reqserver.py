@@ -88,7 +88,17 @@ class ThreadedTCPRequestHandler(socketserver.StreamRequestHandler):
             self.end_connection()
             return 
 
-        resp = response.response()
+        try: 
+            resp = response.response()
+        except Exception as e:
+            loggin.error("Caught exception", str(e) )
+            message.send(self.request, {'msg':'response', 
+                            'status_message':'failed', 
+                'status':1, 'reason':'Unknown error', 'ver':'v1'})
+            self.end_connection()
+            # raise the exception, now the client connection is ended
+            raise e  
+
         try:
             if resp.status == 0:
                 message.send(self.request,{'msg':'response', 'status_message':'OK', 

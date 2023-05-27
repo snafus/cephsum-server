@@ -85,6 +85,10 @@ def create_parseargs():
     parser.add_argument('-r','--readsize',help='Set the readsize in MiB for each chunk of data. Should be a power of 2, and near (but not larger than) the stripe size. Smaller values wll use less memory, larger sizes may have benefits in IO performance.',
                         dest='readsize',default=None,type=int)
 
+    parser.add_argument('--default-checksum',help='If no checksum algorithm requested, what is the default',
+                        dest='default_checksum',default='adler32')
+
+
     parser.add_argument('-x','--lfn2pfnxml',default=None, dest='lfn2pfn_xmlfile', 
                         help='The storage.xml file usually provided to xrootd for lfn2pfn mapping. If not provided a simple method is used to separate the pool and object names')
     parser.add_argument('-m','--maxpoolsize',default=None, type=int, dest='maxpoolsize', 
@@ -123,6 +127,8 @@ def main():
 
     lfn2pfn_file = config['CEPHSUM'].get('lfn2pfn', args.lfn2pfn_xmlfile)
     readsize  = max(1, config['CEPHSUM'].getint('readsize', args.readsize) * 1024**2)
+    default_cksalg = config['CEPHSUM'].get('default_checksum', args.default_checksum)
+
 
     cephconf = config['CEPH'].get('cephconf', args.cephconf)
     keyring  = config['CEPH'].get('keyring', args.keyring)

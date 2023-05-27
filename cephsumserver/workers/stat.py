@@ -19,10 +19,22 @@ class Stat(ThreadedRequestHandler):
         self._thread.start()
 
     def _stat(self):
-        cluster = radospool.RadosPool.pool().get()
-        with cluster.open_ioctx(self._pool)  as ioctx:
-            size, timestamp = cephtools.stat(ioctx, self._path)
+        try:
+            cluster = radospool.RadosPool.pool().get()
+        except rados.ObjectNotFound:
+            self.set_response(Response(1, {}, {'error':'pool not available'}))
 
+        try:
+            with cluster.open_ioctx(self._pool)  as ioctx:
+                try:
+                    size, timestamp = cephtools.stat(ioctx, self._path)
+                except rados.ObjectNotFound:
+                    self.set_response(Response(1, {}, {'error':'pool not available'}))
+                    return
+                self.set_response(Response(0, {'response':'stat','stat':timestamp}, {}))
+        except rados.ObjectNotFound:
+            self.set_response(Response(1, {}, {'error':'pool not available'}))
+            return 
             # try:
             #     stat = ioctx.stat(self._oid)
             # except rados.ObjectNotFound as e:
@@ -34,6 +46,6 @@ class Stat(ThreadedRequestHandler):
             # except rados.NoData as e:
             #     self.set_response(Response(1, {}, {'error':"Missing sriper metadata"}))
             #     raise e
+        self.set_response(Response(1, {}, {'error':'issues'}))
 
 
-        self.set_response(Response(0, {'response':'stat','stat':timestamp}, {}))
