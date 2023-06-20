@@ -129,6 +129,7 @@ def main():
     readsize  = max(1, config['CEPHSUM'].getint('readsize', args.readsize) * 1024**2)
     default_cksalg = config['CEPHSUM'].get('default_checksum', args.default_checksum)
 
+    server_timeout_s = config['CEPHSUM'].get('server_timeout_s',3600)
 
     cephconf = config['CEPH'].get('cephconf', args.cephconf)
     keyring  = config['CEPH'].get('keyring', args.keyring)
@@ -169,7 +170,8 @@ def main():
     # this calls server_forever, until it is killed ... 
     try:
         reqserver.start_server(address=(host, port), 
-                               authkeyfile=secretsfile)
+                               authkeyfile=secretsfile,
+                               timeout_s=server_timeout_s)
     except KeyboardInterrupt:
         pass
     finally:

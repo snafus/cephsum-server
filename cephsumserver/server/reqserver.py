@@ -8,6 +8,7 @@ import logging
 import socket
 import socketserver  
 import threading
+import uuid
 
 from time import sleep, perf_counter
 
@@ -25,6 +26,8 @@ class ThreadedTCPRequestHandler(socketserver.StreamRequestHandler):
         This handler passes of work to the Worker, and awaits a respose, 
         or, triggers a timeout.
         """
+        # generate an id
+        self._id = str(uuid.uuid4())
 
         # authenticate the client first 
         try:
@@ -33,14 +36,14 @@ class ThreadedTCPRequestHandler(socketserver.StreamRequestHandler):
             self.request.close()
             return
         # logging.info(f"Client connected, {self.request.raddr[0]}:{self.request.raddr[1]}", self.request)
-        logging.info(f"Client connected, {self.request.getpeername()}")
+        logging.info(f"Client connected, {self.request.getpeername()} {self._id}")
 
         # get the command
         msg = message.recv(self.request)
-        logging.debug("{}".format(msg))
+        logging.debug("{} {} ".format(msg, self._id))
         # basic sanity check
         if not 'msg' in msg:
-            logging.warning("Ill formed client message")
+            logging.warning(f"Ill formed client message, {self._id}")
             self.request.close()
             return
 
@@ -56,7 +59,7 @@ class ThreadedTCPRequestHandler(socketserver.StreamRequestHandler):
         try:
             response.start()
         except Exception as e:
-            logging.error(f"Error in request {e}")
+            logging.error(f"Error in request {e}, {self._id}")
             self.end_connection()
             return
 
@@ -67,33 +70,36 @@ class ThreadedTCPRequestHandler(socketserver.StreamRequestHandler):
         while not response.is_ready(timeout=2):
             dt = (datetime.datetime.utcnow() - ct_start)
             if dt > self.server.wait_timeout:
-                logging.info("hit looping timeout")
+                logging.info(f"hit looping timeout {self._id}")
                 message.send(self.request, {'msg':'response', 
                                          'status_message':'failed', 
+                                         'id':self._id,
                              'status':1, 'reason':'timeout', 'ver':'v1'})
                 self.end_connection()
                 return 
             # send a keep-alive message
             try:
-                logging.debug("Sending keep-alive message")
-                message.send(self.request, {'msg':'alive', 'dt':dt.total_seconds()})
+                # logging.debug("Sending keep-alive message")
+                message.send(self.request, {'msg':'alive', 'id':self._id,
+                                            'dt':dt.total_seconds()})
             except BrokenPipeError:
-                logging.warning(f"Broken pipe in looping")
+                logging.warning(f"Broken pipe in looping, {self._id}")
                 return
 
         
         # if not finished but here, there has been a problem ... 
         if not response.is_ready(timeout=None):
-            logging.error('How are we here?')
+            logging.error(f'How are we here? {self._id}')
             self.end_connection()
             return 
 
         try: 
             resp = response.response()
         except Exception as e:
-            loggin.error("Caught exception", str(e) )
+            loggin.error("Caught exception", str(e), self._id )
             message.send(self.request, {'msg':'response', 
-                            'status_message':'failed', 
+                            'status_message':'failed',
+                            'id':self._id, 
                 'status':1, 'reason':'Unknown error', 'ver':'v1'})
             self.end_connection()
             # raise the exception, now the client connection is ended
@@ -101,17 +107,21 @@ class ThreadedTCPRequestHandler(socketserver.StreamRequestHandler):
 
         try:
             if resp.status == 0:
-                message.send(self.request,{'msg':'response', 'status_message':'OK', 
-                        'status':0, 'details':resp.response, 'ver':'v1'})
+                resp_msg = {'msg':'response', 'status_message':'OK',
+                        'id':self._id, 
+                        'status':0, 'details':resp.response, 'ver':'v1'}
             else:
-                message.send(self.request,{'msg':'response', 'status_message':'ERROR', 
-                        'status':resp.status, 'details':resp.error, 'ver':'v1'})
+                resp_msg = {'msg':'response', 'status_message':'ERROR', 
+                        'id':self._id, 
+                        'status':resp.status, 'details':resp.error, 'ver':'v1'}
+            logging.info(json.dumps({'req':msg, 'resp':resp_msg}))
+            message.send(self.request, resp_msg)
             # send the final response
             # signal end of messages
             self.end_connection()
 
         except BrokenPipeError:
-            logging.warning(f"Broken pipe")
+            logging.warning(f"Broken pipe {self._id}")
 
 
     def end_connection(self):
@@ -128,6 +138,7 @@ class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
         super().__init__(address, streamhandler)
         self.authkey = authkey
         self.wait_timeout = datetime.timedelta(seconds=wait_timeout)
+        logging.debug(f'Starting ThreadedTCPServer with: timeout: {str(self.wait_timeout)}')
 
     def server_close(self):
         """Called to clean-up the server.
@@ -145,12 +156,13 @@ class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
         finally:
             self.socket.close()
 
-def start_server(address, authkeyfile):
+def start_server(address, authkeyfile, timeout_s=30):
     authkey=auth.get_key(authkeyfile)
     logging.info(f"Starting TCP server, listening on {address[0]}:{address[1]}")
 
     with ThreadedTCPServer(address, ThreadedTCPRequestHandler,
-                        authkey=authkey) as tcpserver:
+                        authkey=authkey,
+                        wait_timeout=timeout_s) as tcpserver:
         # Activate the server; this will keep running until you
         # interrupt the program with Ctrl-C
         tcpserver.serve_forever()

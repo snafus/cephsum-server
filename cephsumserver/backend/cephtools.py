@@ -51,6 +51,7 @@ def read_oid_bytes(ioctx,oid,stripe_size_bytes=None, readsize=64*1024*1024):
     # read at most readsize bytes, and stripe_size_bytes if defined
     read_length = readsize if stripe_size_bytes is None else min(readsize,stripe_size_bytes)
     while True:
+        # logging.debug(f'Reading: {oid}, {offset} {read_length}')
         try:
             buf = ioctx.read(oid, read_length, offset)
         except Exception as e:
@@ -242,7 +243,7 @@ def cks_from_file(ioctx, path, readsize):
         raise e
 
     if bytes_read != total_size:
-        logging.error(f"Mismatch in bytes read {bytes_read} and striped total size metadata {total_size}")
+        logging.error(f"Mismatch in bytes read {bytes_read} and striped total size metadata {total_size} for {path}")
         raise IOError(f"Mismatch in bytes read: {path}, {bytes_read}, {total_size}")
     
     # get current time 

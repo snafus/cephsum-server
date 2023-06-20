@@ -81,14 +81,17 @@ class Cksum(ThreadedRequestHandler):
                     xrdcks = actions.get_from_file(ioctx,self._path, readsize)    
                 else:
                     logging.warning(f'Action {args.action} is not implemented')
-                    raise NotImplementedError(f'Action {args.action} is not implemented')
+                    self.set_response(Response(1, {}, {'error':f'Action {args.action} is not implemented'}))
+                    return
+                    # raise NotImplementedError(f'Action {args.action} is not implemented')
         except rados.ObjectNotFound as e:
             logging.warning("Failed to open pool: {}".format(str(e)))
             self.set_response(Response(1, {}, {'error':'Could not open pool: {}'.format(str(self._pool))}))
             return
         except Exception as e:
             self.set_response(Response(1, {}, {'error':str(e)}))
-            raise e
+            return 
+            # raise e
 
         if xrdcks is not None:
             digest = xrdcks.get_cksum_as_hex()
